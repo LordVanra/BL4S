@@ -26,9 +26,9 @@ class SteppingAction : public G4UserSteppingAction
       G4double z;
       G4double kineticEnergy;
     };
-    
+
+    static void ResetHits() { fTotalHits = 0; fHitData.clear(); }
     static const std::vector<HitData>& GetHitData() { return fHitData; }
-    static void ResetHitData() { fHitData.clear(); }
 
   private:
     const DetectorConstruction* fDetConstruction;

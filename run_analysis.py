@@ -79,10 +79,7 @@ def calculate_transmission(hits, n_events):
     return T, T_err
 
 def main():
-    print("=" * 70)
     print("Proton Transmission Simulation - Automated Run Script")
-    print("=" * 70)
-    print()
     
     # Check if executable exists
     if not os.path.exists('./protonTransmission'):
@@ -92,9 +89,7 @@ def main():
     
     # Run all configurations
     for momentum in MOMENTA:
-        print(f"\n{'=' * 70}")
         print(f"Running momentum: {momentum} GeV/c")
-        print('=' * 70)
         
         # Run A: Material only
         print(f"\n  Configuration A: Material only (B=0, slab=ON)")
@@ -137,12 +132,9 @@ def main():
     delta_err = np.array(results['T_hybrid_err']) / T_product * 100
     
     # Print summary table
-    print("\n" + "=" * 70)
     print("SUMMARY RESULTS")
-    print("=" * 70)
     print(f"{'Momentum':>10} {'T_material':>12} {'T_magnet':>12} {'T_hybrid':>12} {'T_product':>12} {'Δ (%)':>10}")
-    print("-" * 70)
-    
+ 
     for i, p in enumerate(results['momentum']):
         print(f"{p:>10.1f} {results['T_material'][i]:>12.4f} "
               f"{results['T_magnet'][i]:>12.4f} {results['T_hybrid'][i]:>12.4f} "
@@ -151,9 +143,7 @@ def main():
     # Generate plots
     generate_plots(results, T_product, delta_percent, delta_err)
     
-    print("\n" + "=" * 70)
     print("Analysis complete! Check the output plots.")
-    print("=" * 70)
 
 def generate_plots(results, T_product, delta_percent, delta_err):
     """Generate analysis plots"""

@@ -1,4 +1,5 @@
 #include "DetectorConstruction.hh"
+#include "DetectorMessenger.hh"
 
 #include "G4RunManager.hh"
 #include "G4NistManager.hh"
@@ -20,12 +21,16 @@ DetectorConstruction::DetectorConstruction()
   fFieldManager(nullptr),
   fMagneticField(nullptr),
   fMagneticFieldEnabled(true),
-  fMaterialSlabEnabled(true)
-{ }
+  fMaterialSlabEnabled(true),
+  fMessenger(nullptr)
+{
+  fMessenger = new DetectorMessenger(this);
+}
 
 DetectorConstruction::~DetectorConstruction()
 {
   if (fMagneticField) delete fMagneticField;
+  delete fMessenger;
 }
 
 G4VPhysicalVolume* DetectorConstruction::Construct()
@@ -171,7 +176,5 @@ void DetectorConstruction::SetMagneticField(G4bool enable)
 void DetectorConstruction::SetMaterialSlab(G4bool enable)
 {
   fMaterialSlabEnabled = enable;
-  // Note: Changing material requires full reconstruction
-  // For simplicity, we'll handle this via macro commands and reconstruction
   G4RunManager::GetRunManager()->ReinitializeGeometry();
 }

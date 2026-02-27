@@ -1,9 +1,22 @@
 /run/initialize
 
-# Run A: Material only (B=0, slab=on)
-# Run B: Magnet only (B=1T, slab=off)
-# Run C: Hybrid (B=1T, slab=on)
+# Run A: Material only
+/mydet/setMagneticField false
+/mydet/setMaterialSlab true
+/run/initialize
+/gun/momentum 1.0
+/run/beamOn 100000
 
-# Example for 1.0 GeV/c - Material only
+# Run B: Magnet only
+/mydet/setMagneticField true
+/mydet/setMaterialSlab false
+/run/initialize
+/gun/momentum 1.0
+/run/beamOn 100000
+
+# Run C: Hybrid
+/mydet/setMagneticField true
+/mydet/setMaterialSlab true
+/run/initialize
 /gun/momentum 1.0
 /run/beamOn 100000
