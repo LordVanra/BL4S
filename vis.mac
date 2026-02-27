@@ -1,0 +1,39 @@
+# Macro file for visualization
+# Use this for interactive mode to see the geometry
+
+/run/initialize
+
+# Open a viewer
+/vis/open OGL 600x600-0+0
+
+# Disable auto refresh and quieten vis messages
+/vis/viewer/set/autoRefresh false
+/vis/verbose errors
+
+# Draw geometry
+/vis/drawVolume
+
+# Specify view angle
+/vis/viewer/set/viewpointThetaPhi 90 180
+
+# Specify zoom value
+/vis/viewer/zoom 1.5
+
+# Specify style (wireframe or surface)
+/vis/viewer/set/style surface
+/vis/viewer/set/auxiliaryEdge true
+/vis/viewer/set/lineSegmentsPerCircle 100
+
+# Draw smooth trajectories at end of event
+/vis/scene/add/trajectories smooth
+
+# To superimpose all events
+/vis/scene/endOfEventAction accumulate
+
+# Re-establish auto refreshing and verbosity
+/vis/viewer/set/autoRefresh true
+/vis/verbose warnings
+
+# For testing, run a few particles
+/gun/momentum 1.0 GeV
+/run/beamOn 10

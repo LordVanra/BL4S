@@ -1,0 +1,9 @@
+/run/initialize
+
+# Run A: Material only (B=0, slab=on)
+# Run B: Magnet only (B=1T, slab=off)
+# Run C: Hybrid (B=1T, slab=on)
+
+# Example for 1.0 GeV/c - Material only
+/gun/momentum 1.0
+/run/beamOn 100000
