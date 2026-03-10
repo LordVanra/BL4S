@@ -34,3 +34,9 @@ if errorlevel 1 (
 )
 
 echo Build successful!
+
+cd Release
+copy ..\vis.mac .
+copy ..\run.mac .
+
+protonTransmission.exe vis.mac

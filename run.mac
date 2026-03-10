@@ -1,22 +1,57 @@
 /run/initialize
 
-# Run A: Material only
-/mydet/setMagneticField false
-/mydet/setMaterialSlab true
-/run/initialize
+# Run A: Aluminum, none
+/detector/setMagneticField false
+/detector/setMaterialSlab false
+/detector/setSlabMaterial Aluminum6061
 /gun/momentum 1.0
 /run/beamOn 100000
 
-# Run B: Magnet only
-/mydet/setMagneticField true
-/mydet/setMaterialSlab false
-/run/initialize
+# Run B: Polycarbonate, none
+/detector/setMagneticField false
+/detector/setMaterialSlab false
+/detector/setSlabMaterial Polycarbonate
 /gun/momentum 1.0
 /run/beamOn 100000
 
-# Run C: Hybrid
-/mydet/setMagneticField true
-/mydet/setMaterialSlab true
-/run/initialize
+# Run C: Aluminum, slab only
+/detector/setMagneticField false
+/detector/setMaterialSlab true
+/detector/setSlabMaterial Aluminum6061
+/gun/momentum 1.0
+/run/beamOn 100000
+
+# Run D: Polycarbonate, slab only
+/detector/setMagneticField false
+/detector/setMaterialSlab true
+/detector/setSlabMaterial Polycarbonate
+/gun/momentum 1.0
+/run/beamOn 100000
+
+# Run E: Aluminum, magnet only
+/detector/setMagneticField true
+/detector/setMaterialSlab false
+/detector/setSlabMaterial Aluminum6061
+/gun/momentum 1.0
+/run/beamOn 100000
+
+# Run F: Polycarbonate, magnet only
+/detector/setMagneticField true
+/detector/setMaterialSlab false
+/detector/setSlabMaterial Polycarbonate
+/gun/momentum 1.0
+/run/beamOn 100000
+
+# Run G: Aluminum, hybrid
+/detector/setMagneticField true
+/detector/setMaterialSlab true
+/detector/setSlabMaterial Aluminum6061
+/gun/momentum 1.0
+/run/beamOn 100000
+
+# Run H: Polycarbonate, hybrid
+/detector/setMagneticField true
+/detector/setMaterialSlab true
+/detector/setSlabMaterial Polycarbonate
 /gun/momentum 1.0
 /run/beamOn 100000

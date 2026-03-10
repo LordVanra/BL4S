@@ -20,19 +20,22 @@ class DetectorConstruction : public G4VUserDetectorConstruction
 
     void SetMagneticField(G4bool enable);
     void SetMaterialSlab(G4bool enable);
-    
-    G4bool GetMagneticFieldEnabled() const { return fMagneticFieldEnabled; }
-    G4bool GetMaterialSlabEnabled() const { return fMaterialSlabEnabled; }
+    void SetSlabMaterial(const G4String& materialName);
+
+    G4bool   GetMagneticFieldEnabled()  const { return fMagneticFieldEnabled; }
+    G4bool   GetMaterialSlabEnabled()   const { return fMaterialSlabEnabled; }
+    G4String GetSlabMaterialName()      const { return fSlabMaterialName; }
 
   private:
-    G4LogicalVolume* fMagnetLogical;
-    G4LogicalVolume* fSlabLogical;
-    G4LogicalVolume* fScoringLogical;
+    G4LogicalVolume*   fMagnetLogical;
+    G4LogicalVolume*   fSlabLogical;
+    G4LogicalVolume*   fScoringLogical;
     G4VPhysicalVolume* fWorldPhysical;
-    G4FieldManager* fFieldManager;
+    G4FieldManager*    fFieldManager;
     G4UniformMagField* fMagneticField;
-    G4bool fMagneticFieldEnabled;
-    G4bool fMaterialSlabEnabled;
+    G4bool             fMagneticFieldEnabled;
+    G4bool             fMaterialSlabEnabled;
+    G4String           fSlabMaterialName;
     DetectorMessenger* fMessenger;
 };
 

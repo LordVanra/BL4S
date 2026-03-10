@@ -7,6 +7,7 @@
 class DetectorConstruction;
 class G4UIdirectory;
 class G4UIcmdWithABool;
+class G4UIcmdWithAString;
 
 class DetectorMessenger : public G4UImessenger
 {
@@ -21,6 +22,7 @@ class DetectorMessenger : public G4UImessenger
     G4UIdirectory*         fDetDir;
     G4UIcmdWithABool*      fMagFieldCmd;
     G4UIcmdWithABool*      fSlabCmd;
+    G4UIcmdWithAString*    fSlabMaterialCmd;
 };
 
 #endif

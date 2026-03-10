@@ -22,6 +22,7 @@ DetectorConstruction::DetectorConstruction()
   fMagneticField(nullptr),
   fMagneticFieldEnabled(true),
   fMaterialSlabEnabled(true),
+  fSlabMaterialName("Aluminum6061"),  // default
   fMessenger(nullptr)
 {
   fMessenger = new DetectorMessenger(this);
@@ -35,140 +36,103 @@ DetectorConstruction::~DetectorConstruction()
 
 G4VPhysicalVolume* DetectorConstruction::Construct()
 {
-  // Get nist material manager
   G4NistManager* nist = G4NistManager::Instance();
-
-  // Option to switch on/off checking of volumes overlaps
   G4bool checkOverlaps = true;
 
-  //
   // World
-  //
   G4double world_sizeXY = 5*m;
   G4double world_sizeZ  = 10*m;
   G4Material* world_mat = nist->FindOrBuildMaterial("G4_AIR");
 
   G4Box* solidWorld =
-    new G4Box("World",
-             0.5*world_sizeXY, 0.5*world_sizeXY, 0.5*world_sizeZ);
-
+    new G4Box("World", 0.5*world_sizeXY, 0.5*world_sizeXY, 0.5*world_sizeZ);
   G4LogicalVolume* logicWorld =
-    new G4LogicalVolume(solidWorld,
-                        world_mat,
-                        "World");
-
+    new G4LogicalVolume(solidWorld, world_mat, "World");
   fWorldPhysical =
-    new G4PVPlacement(0,                     // no rotation
-                      G4ThreeVector(),       // at (0,0,0)
-                      logicWorld,            // its logical volume
-                      "World",               // its name
-                      0,                     // its mother  volume
-                      false,                 // no boolean operation
-                      0,                     // copy number
-                      checkOverlaps);        // overlaps checking
+    new G4PVPlacement(0, G4ThreeVector(), logicWorld, "World",
+                      0, false, 0, checkOverlaps);
 
-  //
-  // Magnetic Field Volume (z = 0.5m to 1.5m)
-  //
+  // Magnetic Field Volume
   G4Material* magnet_mat = nist->FindOrBuildMaterial("G4_AIR");
-  
   G4Box* solidMagnet =
-    new G4Box("Magnet",
-             0.15*m,    // 30 cm wide (half-width = 15 cm)
-             0.15*m,    // 30 cm tall (half-height = 15 cm)
-             0.5*m);    // 1 m long (half-length = 50 cm)
-
+    new G4Box("Magnet", 0.15*m, 0.15*m, 0.5*m);
   fMagnetLogical =
-    new G4LogicalVolume(solidMagnet,
-                        magnet_mat,
-                        "Magnet");
+    new G4LogicalVolume(solidMagnet, magnet_mat, "Magnet");
+  new G4PVPlacement(0, G4ThreeVector(0, 0, 1.0*m),
+                    fMagnetLogical, "Magnet", logicWorld, false, 0, checkOverlaps);
 
-  new G4PVPlacement(0,
-                    G4ThreeVector(0, 0, 1.0*m),  // centered at z = 1.0m
-                    fMagnetLogical,
-                    "Magnet",
-                    logicWorld,
-                    false,
-                    0,
-                    checkOverlaps);
-
-  // Create magnetic field (1.0 Tesla in y-direction)
   fMagneticField = new G4UniformMagField(G4ThreeVector(0., 1.0*tesla, 0.));
   fFieldManager = new G4FieldManager();
   fFieldManager->SetDetectorField(fMagneticField);
   fFieldManager->CreateChordFinder(fMagneticField);
-  
-  if (fMagneticFieldEnabled) {
+  if (fMagneticFieldEnabled)
     fMagnetLogical->SetFieldManager(fFieldManager, true);
+
+  // Define polycarbonate (C16H14O3)
+  G4Material* polycarbonate = nullptr;
+  if (!G4Material::GetMaterial("Polycarbonate", false)) {
+    polycarbonate = new G4Material("Polycarbonate", 1.20*g/cm3, 3);
+    polycarbonate->AddElement(nist->FindOrBuildElement("C"), 16);
+    polycarbonate->AddElement(nist->FindOrBuildElement("H"), 14);
+    polycarbonate->AddElement(nist->FindOrBuildElement("O"), 3);
+  } else {
+    polycarbonate = G4Material::GetMaterial("Polycarbonate");
   }
 
-  //
-  // Material Slab - Polyethylene (z = 2.0m to 2.1m)
-  //
-  // Define polyethylene (HDPE)
-  G4Material* polyethylene = new G4Material("Polyethylene", 0.94*g/cm3, 2);
-  polyethylene->AddElement(nist->FindOrBuildElement("H"), 4);
-  polyethylene->AddElement(nist->FindOrBuildElement("C"), 2);
-  
-  G4Material* slab_mat = fMaterialSlabEnabled ? polyethylene : world_mat;
+  // Define Aluminum 6061
+  G4Material* aluminum6061 = nullptr;
+  if (!G4Material::GetMaterial("Aluminum6061", false)) {
+    aluminum6061 = new G4Material("Aluminum6061", 2.70*g/cm3, 5);
+    aluminum6061->AddElement(nist->FindOrBuildElement("Al"), 97.9*perCent);
+    aluminum6061->AddElement(nist->FindOrBuildElement("Mg"), 1.0*perCent);
+    aluminum6061->AddElement(nist->FindOrBuildElement("Si"), 0.6*perCent);
+    aluminum6061->AddElement(nist->FindOrBuildElement("Cu"), 0.3*perCent);
+    aluminum6061->AddElement(nist->FindOrBuildElement("Cr"), 0.2*perCent);
+  } else {
+    aluminum6061 = G4Material::GetMaterial("Aluminum6061");
+  }
+
+  // Select slab material by name
+  G4Material* slab_material = G4Material::GetMaterial(fSlabMaterialName, false);
+  if (!slab_material) {
+    G4cerr << "WARNING: Material '" << fSlabMaterialName
+           << "' not found, defaulting to Aluminum6061" << G4endl;
+    slab_material = aluminum6061;
+    fSlabMaterialName = "Aluminum6061";
+  }
+
+  G4Material* slab_mat = fMaterialSlabEnabled ? slab_material : world_mat;
 
   G4Box* solidSlab =
-    new G4Box("Slab",
-             0.5*m,     // 1 m wide
-             0.5*m,     // 1 m tall
-             0.05*m);   // 10 cm thick
-
+    new G4Box("Slab", 0.5*m, 0.5*m, 0.05*m);
   fSlabLogical =
-    new G4LogicalVolume(solidSlab,
-                        slab_mat,
-                        "Slab");
+    new G4LogicalVolume(solidSlab, slab_mat, "Slab");
+  new G4PVPlacement(0, G4ThreeVector(0, 0, 2.05*m),
+                    fSlabLogical, "Slab", logicWorld, false, 0, checkOverlaps);
 
-  new G4PVPlacement(0,
-                    G4ThreeVector(0, 0, 2.05*m),  // centered at z = 2.05m
-                    fSlabLogical,
-                    "Slab",
-                    logicWorld,
-                    false,
-                    0,
-                    checkOverlaps);
-
-  //
-  // Scoring Plane (z = 3.5m)
-  //
+  // Scoring Plane
   G4Material* scoring_mat = nist->FindOrBuildMaterial("G4_AIR");
-
   G4Box* solidScoring =
-    new G4Box("Scoring",
-             1.0*m,      // 2 m wide
-             1.0*m,      // 2 m tall
-             0.001*m);   // 2 mm thick (thin detector)
-
+    new G4Box("Scoring", 2.0*m, 2.0*m, 0.001*m);
   fScoringLogical =
-    new G4LogicalVolume(solidScoring,
-                        scoring_mat,
-                        "Scoring");
-
-  new G4PVPlacement(0,
-                    G4ThreeVector(0, 0, 3.5*m),
-                    fScoringLogical,
-                    "Scoring",
-                    logicWorld,
-                    false,
-                    0,
-                    checkOverlaps);
+    new G4LogicalVolume(solidScoring, scoring_mat, "Scoring");
+  new G4PVPlacement(0, G4ThreeVector(0, 0, 3.5*m),
+                    fScoringLogical, "Scoring", logicWorld, false, 0, checkOverlaps);
 
   return fWorldPhysical;
+}
+
+void DetectorConstruction::SetSlabMaterial(const G4String& materialName)
+{
+  fSlabMaterialName = materialName;
+  G4RunManager::GetRunManager()->ReinitializeGeometry();
 }
 
 void DetectorConstruction::SetMagneticField(G4bool enable)
 {
   fMagneticFieldEnabled = enable;
   if (fMagnetLogical && fFieldManager) {
-    if (enable) {
-      fMagnetLogical->SetFieldManager(fFieldManager, true);
-    } else {
-      fMagnetLogical->SetFieldManager(nullptr, true);
-    }
+    fMagnetLogical->SetFieldManager(enable ? fFieldManager : nullptr, true);
   }
   G4RunManager::GetRunManager()->GeometryHasBeenModified();
 }

@@ -15,13 +15,13 @@ ActionInitialization::~ActionInitialization()
 
 void ActionInitialization::BuildForMaster() const
 {
-  SetUserAction(new RunAction);
+  SetUserAction(new RunAction(fDetConstruction));
 }
 
 void ActionInitialization::Build() const
 {
   SetUserAction(new PrimaryGeneratorAction);
-  SetUserAction(new RunAction);
+  SetUserAction(new RunAction(fDetConstruction));
   SetUserAction(new EventAction);
   SetUserAction(new SteppingAction(fDetConstruction));
 }

@@ -5,15 +5,19 @@
 #include "globals.hh"
 
 class G4Run;
+class DetectorConstruction;
 
 class RunAction : public G4UserRunAction
 {
   public:
-    RunAction();
+    RunAction(DetectorConstruction* detector);
     virtual ~RunAction();
 
     virtual void BeginOfRunAction(const G4Run*);
     virtual void EndOfRunAction(const G4Run*);
+
+  private:
+    DetectorConstruction* fDetector;
 };
 
 #endif

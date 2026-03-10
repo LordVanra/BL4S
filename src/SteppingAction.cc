@@ -20,30 +20,25 @@ SteppingAction::~SteppingAction()
 
 void SteppingAction::UserSteppingAction(const G4Step* step)
 {
-  // Get volume of the current step
   G4VPhysicalVolume* volume = step->GetPreStepPoint()->GetTouchableHandle()
                                   ->GetVolume();
   
   if (!volume) return;
   
-  // Check if we're in the scoring volume
   if (volume->GetName() == "Scoring") {
-    // Get particle information
     G4Track* track = step->GetTrack();
     
     // Only count protons
     if (track->GetDefinition()->GetParticleName() != "proton") return;
+
+    // Only count primaries, not secondaries from hadronic interactions
+    if (track->GetParentID() != 0) return;
     
-    // Get position at the scoring plane
     G4ThreeVector position = step->GetPreStepPoint()->GetPosition();
-    
-    // Get kinetic energy
     G4double kineticEnergy = step->GetPreStepPoint()->GetKineticEnergy();
     
-    // Record the hit
     fTotalHits++;
     
-    // Store detailed hit data
     HitData hit;
     hit.x = position.x() / cm;
     hit.y = position.y() / cm;
@@ -51,7 +46,6 @@ void SteppingAction::UserSteppingAction(const G4Step* step)
     hit.kineticEnergy = kineticEnergy / GeV;
     fHitData.push_back(hit);
     
-    // Kill the track so we don't count it multiple times
     track->SetTrackStatus(fStopAndKill);
   }
 }
