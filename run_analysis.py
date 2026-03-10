@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-Run all configurations of the proton transmission simulation
-and analyze the results. (40 runs: 5 momenta * 4 obstacle states * 2 materials)
-"""
-
 import subprocess
 import os
 import sys
@@ -29,11 +23,11 @@ def create_macro(momentum, config_name, magnet_on, slab_on, material):
     """Create a macro file for a specific configuration"""
     # Initialize the setup, then configure detector parameters
     macro_content = f"""# Generated macro for {config_name}_mat{material} at {momentum} GeV/c
+/run/initialize
 /detector/setMagneticField {"true" if magnet_on else "false"}
 /detector/setMaterialSlab {"true" if slab_on else "false"}
 /detector/setSlabMaterial {material}
-/run/initialize
-/gun/momentum {momentum} GeV
+/gun/momentum {momentum}
 /run/beamOn {N_EVENTS}
 """
     
@@ -45,7 +39,7 @@ def create_macro(momentum, config_name, magnet_on, slab_on, material):
 
 def run_simulation(macro_file):
     """Run GEANT4 simulation with given macro"""
-    print(f"  -> Running simulation with {macro_file}...")
+    print(f"Running simulation with {macro_file}")
     try:
         # Determine executable path depending on OS / build directory
         exe = './protonTransmission'
@@ -65,11 +59,13 @@ def run_simulation(macro_file):
         
         hits = parse_hits_from_output(result.stdout)
         if hits == -1:
-            print("     WARNING: Could not parse hits, assuming 0.")
+            print(f"WARNING: Could not parse hits. exit={result.returncode}")
+            print(f"STDOUT\n{result.stdout[:500]}")
+            print(f"STDERR\n{result.stderr[:500] if result.stderr else 'None'}")
             return 0
         return hits
     except Exception as e:
-        print(f"     ERROR running simulation: {e}")
+        print(f"ERROR running simulation: {e}")
         return 0
 
 def parse_hits_from_output(output):
@@ -100,14 +96,13 @@ def main():
     
     # Run all configurations
     for material in MATERIALS:
-        print(f"\\n=============================================")
         print(f"MATERIAL: {material}")
-        print(f"=============================================")
         for obs_name, magnet_on, slab_on in OBSTACLES:
-            print(f"\\n--- Obstacle Config: {obs_name.upper()} (Magnet:{magnet_on}, Slab:{slab_on}) ---")
+            print(f"Obstacle Config: {obs_name.upper()} (Magnet:{magnet_on}, Slab:{slab_on})")
             for momentum in MOMENTA:
                 macro_file = create_macro(momentum, obs_name, magnet_on, slab_on, material)
                 hits = run_simulation(macro_file)
+                os.remove(macro_file)
                 T, T_err = calculate_transmission(hits, N_EVENTS)
                 
                 results[material][obs_name]['T'].append(T)
