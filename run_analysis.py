@@ -1,39 +1,43 @@
 #!/usr/bin/env python3
 """
 Run all configurations of the proton transmission simulation
-and analyze the results.
+and analyze the results. (40 runs: 5 momenta * 4 obstacle states * 2 materials)
 """
 
 import subprocess
 import os
 import sys
+import re
 import numpy as np
 import matplotlib.pyplot as plt
 
 # Configuration
 MOMENTA = [0.5, 1.0, 2.0, 3.0, 5.0]  # GeV/c
 N_EVENTS = 100000
+MATERIALS = ["Aluminum6061", "Polycarbonate"]
+OBSTACLES = [
+    ("ff", False, False),
+    ("ft", False, True),
+    ("tf", True, False),
+    ("tt", True, True)
+]
 
 # Results storage
-results = {
-    'momentum': [],
-    'T_material': [],
-    'T_magnet': [],
-    'T_hybrid': [],
-    'T_material_err': [],
-    'T_magnet_err': [],
-    'T_hybrid_err': []
-}
+results = {mat: {obs: {'T': [], 'T_err': []} for obs, _, _ in OBSTACLES} for mat in MATERIALS}
 
-def create_macro(momentum, config_name, magnet_on, slab_on):
+def create_macro(momentum, config_name, magnet_on, slab_on, material):
     """Create a macro file for a specific configuration"""
-    macro_content = f"""# Generated macro for {config_name} at {momentum} GeV/c
+    # Initialize the setup, then configure detector parameters
+    macro_content = f"""# Generated macro for {config_name}_mat{material} at {momentum} GeV/c
+/detector/setMagneticField {"true" if magnet_on else "false"}
+/detector/setMaterialSlab {"true" if slab_on else "false"}
+/detector/setSlabMaterial {material}
 /run/initialize
 /gun/momentum {momentum} GeV
 /run/beamOn {N_EVENTS}
 """
     
-    filename = f"run_{config_name}_{momentum}GeV.mac"
+    filename = f"run_{config_name}_mat{material}_{momentum}GeV.mac"
     with open(filename, 'w') as f:
         f.write(macro_content)
     
@@ -41,36 +45,39 @@ def create_macro(momentum, config_name, magnet_on, slab_on):
 
 def run_simulation(macro_file):
     """Run GEANT4 simulation with given macro"""
-    print(f"Running simulation with {macro_file}...")
-    
+    print(f"  -> Running simulation with {macro_file}...")
     try:
+        # Determine executable path depending on OS / build directory
+        exe = './protonTransmission'
+        if os.path.exists('./build/Release/protonTransmission.exe'):
+            exe = './build/Release/protonTransmission.exe'
+        elif os.path.exists('./build/protonTransmission.exe'):
+            exe = './build/protonTransmission.exe'
+        elif os.path.exists('protonTransmission.exe'):
+            exe = 'protonTransmission.exe'
+            
         result = subprocess.run(
-            ['./protonTransmission', macro_file],
+            [exe, macro_file],
             capture_output=True,
             text=True,
-            timeout=600  # 10 minute timeout
+            timeout=1200  # 20 min timeout
         )
         
-        # Parse output to get hit count
-        # This is a placeholder - you'll need to implement proper output parsing
-        # or modify the GEANT4 code to write results to a file
-        
         hits = parse_hits_from_output(result.stdout)
+        if hits == -1:
+            print("     WARNING: Could not parse hits, assuming 0.")
+            return 0
         return hits
-        
-    except subprocess.TimeoutExpired:
-        print(f"ERROR: Simulation timed out for {macro_file}")
-        return 0
     except Exception as e:
-        print(f"ERROR running simulation: {e}")
+        print(f"     ERROR running simulation: {e}")
         return 0
 
 def parse_hits_from_output(output):
     """Parse the number of hits from GEANT4 output"""
-    # This is a placeholder - implement based on your actual output format
-    # For now, return a dummy value
-    # In reality, you should grep for scoring information
-    return 50000  # Placeholder
+    match = re.search(r'Number of protons at scoring plane\s*:\s*(\d+)', output)
+    if match:
+        return int(match.group(1))
+    return -1
 
 def calculate_transmission(hits, n_events):
     """Calculate transmission and error"""
@@ -79,108 +86,134 @@ def calculate_transmission(hits, n_events):
     return T, T_err
 
 def main():
-    print("Proton Transmission Simulation - Automated Run Script")
+    print(f"Proton Transmission Simulation - 40 Configurations Run Script")
+    print(f"Events per run: {N_EVENTS}")
     
     # Check if executable exists
-    if not os.path.exists('./protonTransmission'):
-        print("ERROR: protonTransmission executable not found!")
-        print("Please build the project first using build.sh or build.bat")
+    exe_found = any(os.path.exists(p) for p in [
+        './protonTransmission', './build/Release/protonTransmission.exe', 
+        './build/protonTransmission.exe', 'protonTransmission.exe'
+    ])
+    if not exe_found:
+        print("ERROR: protonTransmission executable not found! Make sure you've built it first.")
         sys.exit(1)
     
     # Run all configurations
-    for momentum in MOMENTA:
-        print(f"Running momentum: {momentum} GeV/c")
-        
-        # Run A: Material only
-        print(f"\n  Configuration A: Material only (B=0, slab=ON)")
-        macro_A = create_macro(momentum, "material", False, True)
-        hits_material = run_simulation(macro_A)
-        T_material, T_material_err = calculate_transmission(hits_material, N_EVENTS)
-        
-        # Run B: Magnet only
-        print(f"\n  Configuration B: Magnet only (B=1T, slab=OFF)")
-        macro_B = create_macro(momentum, "magnet", True, False)
-        hits_magnet = run_simulation(macro_B)
-        T_magnet, T_magnet_err = calculate_transmission(hits_magnet, N_EVENTS)
-        
-        # Run C: Hybrid
-        print(f"\n  Configuration C: Hybrid (B=1T, slab=ON)")
-        macro_C = create_macro(momentum, "hybrid", True, True)
-        hits_hybrid = run_simulation(macro_C)
-        T_hybrid, T_hybrid_err = calculate_transmission(hits_hybrid, N_EVENTS)
-        
-        # Store results
-        results['momentum'].append(momentum)
-        results['T_material'].append(T_material)
-        results['T_magnet'].append(T_magnet)
-        results['T_hybrid'].append(T_hybrid)
-        results['T_material_err'].append(T_material_err)
-        results['T_magnet_err'].append(T_magnet_err)
-        results['T_hybrid_err'].append(T_hybrid_err)
-        
-        print(f"\n  Results for {momentum} GeV/c:")
-        print(f"    T_material = {T_material:.4f} ± {T_material_err:.4f}")
-        print(f"    T_magnet   = {T_magnet:.4f} ± {T_magnet_err:.4f}")
-        print(f"    T_hybrid   = {T_hybrid:.4f} ± {T_hybrid_err:.4f}")
-    
-    # Calculate deviations
-    T_product = np.array(results['T_material']) * np.array(results['T_magnet'])
-    delta = (np.array(results['T_hybrid']) / T_product) - 1
-    delta_percent = delta * 100
-    
-    # Calculate error on delta (simplified)
-    delta_err = np.array(results['T_hybrid_err']) / T_product * 100
-    
-    # Print summary table
-    print("SUMMARY RESULTS")
-    print(f"{'Momentum':>10} {'T_material':>12} {'T_magnet':>12} {'T_hybrid':>12} {'T_product':>12} {'Δ (%)':>10}")
- 
-    for i, p in enumerate(results['momentum']):
-        print(f"{p:>10.1f} {results['T_material'][i]:>12.4f} "
-              f"{results['T_magnet'][i]:>12.4f} {results['T_hybrid'][i]:>12.4f} "
-              f"{T_product[i]:>12.4f} {delta_percent[i]:>10.2f}")
-    
-    # Generate plots
-    generate_plots(results, T_product, delta_percent, delta_err)
-    
-    print("Analysis complete! Check the output plots.")
+    for material in MATERIALS:
+        print(f"\\n=============================================")
+        print(f"MATERIAL: {material}")
+        print(f"=============================================")
+        for obs_name, magnet_on, slab_on in OBSTACLES:
+            print(f"\\n--- Obstacle Config: {obs_name.upper()} (Magnet:{magnet_on}, Slab:{slab_on}) ---")
+            for momentum in MOMENTA:
+                macro_file = create_macro(momentum, obs_name, magnet_on, slab_on, material)
+                hits = run_simulation(macro_file)
+                T, T_err = calculate_transmission(hits, N_EVENTS)
+                
+                results[material][obs_name]['T'].append(T)
+                results[material][obs_name]['T_err'].append(T_err)
+                print(f"     Momentum {momentum:>4} GeV/c -> Hits: {hits:>6} | T = {T:.4f} \u00B1 {T_err:.4f}")
 
-def generate_plots(results, T_product, delta_percent, delta_err):
-    """Generate analysis plots"""
+    # Generate plots
+    generate_plots(results)
+    print("\\nAnalysis complete! Check transmission_40runs_analysis.png and transmission_results_table.txt")
+
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+
+def generate_plots(results):
+    """Generate analysis plots and save all to a single PDF"""
     
-    # Plot 1: Transmission curves
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-    
-    # Transmission vs momentum
-    ax1.errorbar(results['momentum'], results['T_material'], 
-                 yerr=results['T_material_err'],
-                 marker='o', label='T_material', capsize=5)
-    ax1.errorbar(results['momentum'], results['T_magnet'], 
-                 yerr=results['T_magnet_err'],
-                 marker='s', label='T_magnet', capsize=5)
-    ax1.errorbar(results['momentum'], results['T_hybrid'], 
-                 yerr=results['T_hybrid_err'],
-                 marker='^', label='T_hybrid', capsize=5)
-    ax1.plot(results['momentum'], T_product, 'k--', label='T_magnet × T_material')
-    
-    ax1.set_xlabel('Momentum (GeV/c)', fontsize=12)
-    ax1.set_ylabel('Transmission', fontsize=12)
-    ax1.set_title('Transmission vs Momentum', fontsize=14, fontweight='bold')
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
-    
-    # Deviation plot
-    ax2.errorbar(results['momentum'], delta_percent, yerr=delta_err,
-                 marker='o', color='red', capsize=5, linewidth=2)
-    ax2.axhline(y=0, color='k', linestyle='--', alpha=0.5)
-    ax2.set_xlabel('Momentum (GeV/c)', fontsize=12)
-    ax2.set_ylabel('Δ (%)', fontsize=12)
-    ax2.set_title('Deviation from Independence', fontsize=14, fontweight='bold')
-    ax2.grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    plt.savefig('transmission_analysis.png', dpi=300, bbox_inches='tight')
-    print("\nPlot saved as: transmission_analysis.png")
+    colors = {'ff': 'black', 'ft': 'blue', 'tf': 'red', 'tt': 'purple'}
+    markers = {'ff': 'o', 'ft': 's', 'tf': '^', 'tt': 'D'}
+    labels_map = {
+        'ff': 'FF (No Magnet, No Slab)', 
+        'ft': 'FT (Slab Only)', 
+        'tf': 'TF (Magnet Only)', 
+        'tt': 'TT (Magnet + Slab)'
+    }
+
+    print("\\nGenerating PDF report...")
+    with PdfPages('transmission_analysis_report.pdf') as pdf:
+        
+        # Plot 1: Standard transmission comparison per material (Side-by-side)
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+        for idx, material in enumerate(MATERIALS):
+            ax = axes[idx]
+            for obs_name, _, _ in OBSTACLES:
+                t_vals = results[material][obs_name]['T']
+                t_errs = results[material][obs_name]['T_err']
+                ax.errorbar(MOMENTA, t_vals, yerr=t_errs,
+                            marker=markers[obs_name], color=colors[obs_name], 
+                            label=labels_map[obs_name], capsize=5, linestyle='-')
+                
+            ax.set_xlabel('Momentum (GeV/c)', fontsize=12)
+            ax.set_ylabel('Transmission', fontsize=12)
+            ax.set_title(f'Transmission vs Momentum ({material})', fontsize=14, fontweight='bold')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+            ax.set_ylim(-0.05, 1.05)
+        plt.tight_layout()
+        pdf.savefig(fig)
+        plt.close()
+
+        # Plot 2: Material comparison (Aluminum vs Polycarbonate) for TT configuration
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        ax.errorbar(MOMENTA, results['Aluminum6061']['tt']['T'], yerr=results['Aluminum6061']['tt']['T_err'],
+                    marker='o', color='blue', label='Aluminum 6061 (TT)', capsize=5, linestyle='-')
+        ax.errorbar(MOMENTA, results['Polycarbonate']['tt']['T'], yerr=results['Polycarbonate']['tt']['T_err'],
+                    marker='s', color='orange', label='Polycarbonate (TT)', capsize=5, linestyle='-')
+        
+        ax.set_xlabel('Momentum (GeV/c)', fontsize=12)
+        ax.set_ylabel('Transmission', fontsize=12)
+        ax.set_title('Material Comparison: Full Setup (Magnet + Slab)', fontsize=14, fontweight='bold')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        ax.set_ylim(-0.05, 1.05)
+        plt.tight_layout()
+        pdf.savefig(fig)
+        plt.close()
+
+        # Plot 3: Fractional Loss Comparison (How much is lost relative to FF Baseline)
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+        for idx, material in enumerate(MATERIALS):
+            ax = axes[idx]
+            ff_vals = np.array(results[material]['ff']['T'])
+            
+            for obs_name in ['ft', 'tf', 'tt']:
+                t_vals = np.array(results[material][obs_name]['T'])
+                loss = (ff_vals - t_vals) / ff_vals * 100
+                
+                # Simple error propagation for loss
+                ff_err = np.array(results[material]['ff']['T_err'])
+                t_err = np.array(results[material][obs_name]['T_err'])
+                loss_err = np.abs(loss) * np.sqrt((t_err/t_vals)**2 + (ff_err/ff_vals)**2)
+                
+                ax.errorbar(MOMENTA, loss, yerr=loss_err,
+                            marker=markers[obs_name], color=colors[obs_name], 
+                            label=f'Loss due to {labels_map[obs_name][:2]}', capsize=5, linestyle='--')
+                
+            ax.set_xlabel('Momentum (GeV/c)', fontsize=12)
+            ax.set_ylabel('Relative Loss w.r.t Beam (%)', fontsize=12)
+            ax.set_title(f'Fractional Beam Loss ({material})', fontsize=14, fontweight='bold')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        pdf.savefig(fig)
+        plt.close()
+
+    # Save a summary table to file
+    with open('transmission_results_table.txt', 'w') as f:
+        f.write("Momentum | Material       | ff      | ft      | tf      | tt      \\n")
+        f.write("-" * 75 + "\\n")
+        for momentum_idx, momentum in enumerate(MOMENTA):
+            for material in MATERIALS:
+                ff_t = results[material]['ff']['T'][momentum_idx]
+                ft_t = results[material]['ft']['T'][momentum_idx]
+                tf_t = results[material]['tf']['T'][momentum_idx]
+                tt_t = results[material]['tt']['T'][momentum_idx]
+                f.write(f"{momentum:>8.2f} | {material:<14} | {ff_t:.4f} | {ft_t:.4f} | {tf_t:.4f} | {tt_t:.4f} \\n")
 
 if __name__ == '__main__':
     main()

@@ -34,10 +34,7 @@ int main(int argc, char** argv)
   } else {
     G4UIExecutive* ui = new G4UIExecutive(argc, argv);
     UImanager->ApplyCommand("/control/execute vis.mac");
-    G4cout << "Press Enter to exit..." << G4endl;
-    G4String cmd;
-    std::cin.ignore();
-    std::getline(std::cin, cmd);
+    ui->SessionStart();
     delete ui;
   }
 

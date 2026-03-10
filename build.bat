@@ -39,4 +39,4 @@ cd Release
 copy ..\vis.mac .
 copy ..\run.mac .
 
-protonTransmission.exe vis.mac
+protonTransmission.exe
