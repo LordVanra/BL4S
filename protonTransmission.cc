@@ -10,12 +10,6 @@
 
 int main(int argc, char** argv)
 {
-  // MUST be first — before RunManager, VisManager, everything
-  G4UIExecutive* ui = nullptr;
-  if (argc == 1) {
-    ui = new G4UIExecutive(argc, argv, "win32");
-  }
-
   G4RunManager* runManager = new G4RunManager;
 
   DetectorConstruction* detector = new DetectorConstruction();
@@ -33,14 +27,18 @@ int main(int argc, char** argv)
 
   G4UImanager* UImanager = G4UImanager::GetUIpointer();
 
-  if (ui) {
-    UImanager->ApplyCommand("/control/execute vis.mac");
-    ui->SessionStart();
-    delete ui;
-  } else {
+  if (argc != 1) {
     G4String command = "/control/execute ";
     G4String fileName = argv[1];
     UImanager->ApplyCommand(command + fileName);
+  } else {
+    G4UIExecutive* ui = new G4UIExecutive(argc, argv);
+    UImanager->ApplyCommand("/control/execute vis.mac");
+    G4cout << "Press Enter to exit..." << G4endl;
+    G4String cmd;
+    std::cin.ignore();
+    std::getline(std::cin, cmd);
+    delete ui;
   }
 
   delete visManager;
